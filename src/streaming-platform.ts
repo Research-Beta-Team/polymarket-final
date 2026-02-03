@@ -1,7 +1,6 @@
 import { WebSocketClient } from './websocket-client';
 import { EventManager } from './event-manager';
 import { TradingManager } from './trading-manager';
-import { RedemptionService } from './redemption-service';
 import { getNext15MinIntervals } from './event-utils';
 import { fetchEventState, saveEventState } from './event-state-api';
 import type { PriceUpdate, ConnectionStatus } from './types';
@@ -25,7 +24,6 @@ export class StreamingPlatform {
   private upPrice: number | null = null; // Current UP token price (0-100 scale)
   private downPrice: number | null = null; // Current DOWN token price (0-100 scale)
   private priceUpdateInterval: number | null = null; // Interval for updating UP/DOWN prices
-  private redemptionService: RedemptionService | null = null; // Auto-redemption for resolved markets (background)
   // Wallet connection state
   private walletState: {
     eoaAddress: string | null;
@@ -72,18 +70,6 @@ export class StreamingPlatform {
       }
     });
     this.tradingManager.loadStrategyConfig();
-    this.redemptionService = new RedemptionService({
-      getPositions: () => this.tradingManager.getPositions(),
-      removePositions: (ids) => this.tradingManager.removePositionsByIds(ids),
-      onRedemptionSuccess: (eventSlug, positionIds) => {
-        console.log('[Redemption] Redeemed winning tokens:', eventSlug, positionIds.length, 'position(s)');
-        this.renderTradingSection();
-        this.fetchBalance();
-      },
-      onRedemptionError: (eventSlug, error) => {
-        console.warn('[Redemption] Error for', eventSlug, error);
-      },
-    });
   }
 
   async initialize(): Promise<void> {
@@ -1272,7 +1258,6 @@ export class StreamingPlatform {
       console.log('[Wallet] Stopped active trading');
     }
     
-    this.redemptionService?.stop();
     // Reset wallet state
     this.walletState.isConnected = false;
     this.walletState.isInitialized = false;
@@ -1318,7 +1303,6 @@ export class StreamingPlatform {
       }
 
       this.walletState.isInitialized = true;
-      this.redemptionService?.start();
       this.walletState.error = null;
 
       // Store API credentials in trading manager and wallet state

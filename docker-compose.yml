@@ -1,0 +1,11 @@
+# Run app locally: frontend + API, env from .env
+# Usage: copy .env.example to .env, set values, then: docker compose up --build
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - PORT=3000
